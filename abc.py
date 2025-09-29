@@ -52,22 +52,58 @@ def neighbor(solution, population):
 # Run ABC (record each step)
 # -------------------------------
 def abc_run():
+    population, fitness, trials = initialize()
+    best, best_f = get_best(population, fitness)
+    snapshots = [population.copy()]  # save positions for animation
+
+    for _ in range(MAX_ITER):
+        population, fitness, trials = employed_bees(population, fitness, trials)
+        population, fitness, trials = onlooker_bees(population, fitness, trials)
+        population, fitness, trials = scout_bees(population, fitness, trials)
+
+        best, best_f = update_best(population, fitness, best, best_f)
+        snapshots.append(population.copy())
+
+    return snapshots, best, best_f
+
+
+def initialize():
     population = init_population(POP, DIM)
-    # Corrected: Use shifted_ackley instead of ackley
     fitness = np.array([shifted_ackley(ind) for ind in population])
     trials = np.zeros(POP, dtype=int)
+    return population, fitness, trials
 
+
+def get_best(population, fitness):
     best_idx = np.argmin(fitness)
     best = population[best_idx].copy()
     best_f = fitness[best_idx]
+    return best, best_f
 
-    snapshots = [population.copy()]  # save positions for animation
 
-    for it in range(MAX_ITER):
-        # Employed bees
-        for i in range(POP):
+def employed_bees(population, fitness, trials):
+    for i in range(POP):
+        new_sol = neighbor(population[i], population)
+        new_fit = shifted_ackley(new_sol)
+        if new_fit < fitness[i]:
+            population[i] = new_sol
+            fitness[i] = new_fit
+            trials[i] = 0
+        else:
+            trials[i] += 1
+    return population, fitness, trials
+
+
+def onlooker_bees(population, fitness, trials):
+    max_fit = np.max(fitness)
+    probs = (max_fit - fitness) + 1e-9
+    probs = probs / np.sum(probs)
+
+    onlooker_count = POP
+    i, t = 0, 0
+    while t < onlooker_count:
+        if random.random() < probs[i]:
             new_sol = neighbor(population[i], population)
-            # Corrected: Use shifted_ackley instead of ackley
             new_fit = shifted_ackley(new_sol)
             if new_fit < fitness[i]:
                 population[i] = new_sol
@@ -75,46 +111,27 @@ def abc_run():
                 trials[i] = 0
             else:
                 trials[i] += 1
+            t += 1
+        i = (i + 1) % POP
+    return population, fitness, trials
 
-        # Onlooker bees
-        max_fit = np.max(fitness)
-        probs = (max_fit - fitness) + 1e-9
-        probs = probs / np.sum(probs)
-        onlooker_count = POP
-        i, t = 0, 0
-        while t < onlooker_count:
-            if random.random() < probs[i]:
-                new_sol = neighbor(population[i], population)
-                # Corrected: Use shifted_ackley instead of ackley
-                new_fit = shifted_ackley(new_sol)
-                if new_fit < fitness[i]:
-                    population[i] = new_sol
-                    fitness[i] = new_fit
-                    trials[i] = 0
-                else:
-                    trials[i] += 1
-                t += 1
-            i = (i + 1) % POP
 
-        # Scout bees
-        for i in range(POP):
-            if trials[i] > LIMIT:
-                population[i] = np.random.uniform(LOWER, UPPER, size=DIM)
-                # Corrected: Use shifted_ackley instead of ackley
-                fitness[i] = shifted_ackley(population[i])
-                trials[i] = 0
+def scout_bees(population, fitness, trials):
+    for i in range(POP):
+        if trials[i] > LIMIT:
+            population[i] = np.random.uniform(LOWER, UPPER, size=DIM)
+            fitness[i] = shifted_ackley(population[i])
+            trials[i] = 0
+    return population, fitness, trials
 
-        # Update best
-        cur_best_idx = np.argmin(fitness)
-        cur_best_f = fitness[cur_best_idx]
-        if cur_best_f < best_f:
-            best_f = cur_best_f
-            best = population[cur_best_idx].copy()
 
-        # save snapshot
-        snapshots.append(population.copy())
-
-    return snapshots, best, best_f
+def update_best(population, fitness, best, best_f):
+    cur_best_idx = np.argmin(fitness)
+    cur_best_f = fitness[cur_best_idx]
+    if cur_best_f < best_f:
+        best_f = cur_best_f
+        best = population[cur_best_idx].copy()
+    return best, best_f
 
 # -------------------------------
 # Visualization
