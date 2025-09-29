@@ -10,7 +10,7 @@ import random
 # -------------------------------
 DIM = 2                # ใช้ 2 มิติ เพื่อ visualize
 POP = 30               # จำนวนผึ้ง
-MAX_ITER = 1000         # จำนวน iteration
+MAX_ITER = 100         # จำนวน iteration
 LIMIT = 20             # scout limit
 LOWER, UPPER = -5.12, 5.12
 
